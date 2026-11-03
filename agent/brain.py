@@ -21,7 +21,7 @@ def llm(token, messages, max_tokens=512, account_id=None):
                  "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=60) as r:
         out = json.loads(r.read())
-    return out["choices"][0]["message"]["content"]
+    return out["result"]["choices"][0]["message"]["content"]
 
 
 def parse_traceback(log_text):
