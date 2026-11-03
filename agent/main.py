@@ -16,8 +16,8 @@ import brain
 BRIDGE = os.environ["SWITCH_BRIDGE"]
 AGENT_ID = os.environ["SWITCH_AGENT_ID"]
 API_KEY = os.environ["SWITCH_AGENT_KEY"]
-CF_ACCOUNT = os.environ["CF_ACCOUNT_ID"]
-CF_TOKEN = open(os.environ.get("CF_TOKEN_FILE", "/home/codespace/.cf-token")).read().strip()
+CF_ACCOUNT = os.environ.get("CF_ACCOUNT_ID", "")
+LLM_TOKEN = open(os.environ.get("LLM_TOKEN_FILE", "/home/codespace/.gh-models-token")).read().strip()
 SERVICE_REPO = os.environ.get("SERVICE_REPO", "/workspaces/switch-release-triage/fixtures/payments-service")
 REPRO_CMD = os.environ.get("REPRO_CMD", "python3 -m pytest -x -q")
 
@@ -49,7 +49,7 @@ def triage(room_id, log_text):
         summary.append(f"- Breaking change (git log -S {leaf['func']}): `{c['sha']}` \"{c['subject']}\" by {c['author']} on {c['date']}")
     summary.append("Say `@release-triage reproduce` and I'll run the failing path and post the output.")
     try:
-        prose = brain.llm(CF_ACCOUNT, CF_TOKEN, [
+        prose = brain.llm(LLM_TOKEN, [
             {"role": "system", "content": "You are a release triage assistant. One or two plain sentences, no markdown."},
             {"role": "user", "content": f"In one sentence, what likely broke and who should look first? Facts: {summary}"}])
         summary.append(f"- Read: {prose.strip()}")
@@ -69,7 +69,7 @@ def reproduce(room_id):
 
 def chat(room_id, question, context=""):
     try:
-        out = brain.llm(CF_ACCOUNT, CF_TOKEN, [
+        out = brain.llm(LLM_TOKEN, [
             {"role": "system", "content": "You are release-triage, a deploy triage agent in a team chat room. Be brief, concrete, no fluff."},
             {"role": "user", "content": f"Room context:\n{context[-2000:]}\n\nQuestion: {question}"}])
         answer(room_id, out.strip())
