@@ -69,7 +69,7 @@ you:  @release-triage deploy #47 to production FAILED
 bot:  Deploy failure triage:
       - Crash: ZeroDivisionError: float division by zero
       - Site: /srv/payments/currency.py:9 in convert
-      - Breaking commit: 2c62c71 "support promo exchange rates" (Priya)
+      - Breaking change (git log -S convert): `ecab8e90` "support promo exchange rates"
       - Assessment: promo rate of zero reaches the division unguarded.
 
 you:  reproduce
