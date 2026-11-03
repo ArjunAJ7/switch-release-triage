@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SYNTHETIC DEMO DATA: every author name, commit and file this script
+# generates is invented for the demo and depicts no real person or project.
 # Build the fixture "payments-service" repo with a real history whose last
 # feature commit introduces the crash the deploy log shows.
 set -euo pipefail

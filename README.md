@@ -90,3 +90,12 @@ bot:  Deploy #47 failed on a ZeroDivisionError in currency conversion;
   at the same room and it works unchanged.
 - No secrets in the repo: tokens come from the environment or files outside
   the checkout.
+
+## Demo data is synthetic
+
+Every name, log and commit in the demo is invented. The deploy logs come from
+`poster/simulate_ci.py`, the `payments-service` repo and its history
+(including the author "Dev Malhotra" and the breaking commit) are generated
+by `fixtures/build_service_repo.sh`, and the chat participants are throwaway
+accounts on a local Mattermost. No real person, employer, repository or
+production system is depicted.
