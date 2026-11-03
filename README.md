@@ -70,7 +70,7 @@ bot:  Deploy failure triage:
       - Crash: ZeroDivisionError: float division by zero
       - Site: /srv/payments/currency.py:9 in convert
       - Breaking change (git log -S convert): `ecab8e90` "support promo exchange rates"
-      - Assessment: promo rate of zero reaches the division unguarded.
+      - Read: promo rate of zero reaches the division unguarded.
 
 you:  reproduce
 bot:  Ran `python3 -m pytest -q` in the service checkout: reproduced the
@@ -78,7 +78,7 @@ bot:  Ran `python3 -m pytest -q` in the service checkout: reproduced the
 
 you:  @release-triage what just broke, and who should look first?
 bot:  Deploy #47 failed on a ZeroDivisionError in currency conversion;
-      Priya's promo-rates commit is the place to start.
+      the promo-rates commit is the place to start.
 ```
 
 ## Notes
