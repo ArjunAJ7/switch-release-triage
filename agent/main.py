@@ -22,7 +22,7 @@ SERVICE_REPO = os.environ.get("SERVICE_REPO", "/workspaces/switch-release-triage
 REPRO_CMD = os.environ.get("REPRO_CMD", "python3 -m pytest -x -q")
 
 client = SwitchClient(BRIDGE, AGENT_ID, API_KEY)
-state = {"room": None, "last_tb": None}
+state = {"room": None, "last_tb": None, "last_triage": None}
 
 
 def answer(room_id, text):
@@ -55,7 +55,8 @@ def triage(room_id, log_text):
         summary.append(f"- Read: {prose.strip()}")
     except Exception as e:
         print(f"[llm] {e}", flush=True)
-    answer(room_id, "\n".join(summary))
+    state["last_triage"] = "\n".join(summary)
+    answer(room_id, state["last_triage"])
 
 
 def reproduce(room_id):
@@ -71,7 +72,7 @@ def chat(room_id, question, context=""):
     try:
         out = brain.llm(LLM_TOKEN, [
             {"role": "system", "content": "You are release-triage, a deploy triage agent in a team chat room. Be brief, concrete, no fluff."},
-            {"role": "user", "content": f"Room context:\n{context[-2000:]}\n\nQuestion: {question}"}], account_id=CF_ACCOUNT)
+            {"role": "user", "content": (f"My latest triage:\n{state.get('last_triage') or 'none yet'}\n\nRecent room messages:\n{context[-1500:]}\n\nQuestion: {question}")}], account_id=CF_ACCOUNT)
         answer(room_id, out.strip())
     except Exception as e:
         answer(room_id, f"My reasoning backend errored ({e}). Try `reproduce` or paste a log.")
