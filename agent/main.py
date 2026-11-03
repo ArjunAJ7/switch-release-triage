@@ -17,7 +17,7 @@ BRIDGE = os.environ["SWITCH_BRIDGE"]
 AGENT_ID = os.environ["SWITCH_AGENT_ID"]
 API_KEY = os.environ["SWITCH_AGENT_KEY"]
 CF_ACCOUNT = os.environ.get("CF_ACCOUNT_ID", "")
-LLM_TOKEN = open(os.environ.get("LLM_TOKEN_FILE", "/home/codespace/.gh-models-token")).read().strip()
+LLM_TOKEN = open(os.environ.get("LLM_TOKEN_FILE", "/home/codespace/.cf-token")).read().strip()
 SERVICE_REPO = os.environ.get("SERVICE_REPO", "/workspaces/switch-release-triage/fixtures/payments-service")
 REPRO_CMD = os.environ.get("REPRO_CMD", "python3 -m pytest -x -q")
 
@@ -51,7 +51,7 @@ def triage(room_id, log_text):
     try:
         prose = brain.llm(LLM_TOKEN, [
             {"role": "system", "content": "You are a release triage assistant. One or two plain sentences, no markdown."},
-            {"role": "user", "content": f"In one sentence, what likely broke and who should look first? Facts: {summary}"}])
+            {"role": "user", "content": f"In one sentence, what likely broke and who should look first? Facts: {summary}"}], account_id=CF_ACCOUNT)
         summary.append(f"- Read: {prose.strip()}")
     except Exception as e:
         print(f"[llm] {e}", flush=True)
@@ -71,7 +71,7 @@ def chat(room_id, question, context=""):
     try:
         out = brain.llm(LLM_TOKEN, [
             {"role": "system", "content": "You are release-triage, a deploy triage agent in a team chat room. Be brief, concrete, no fluff."},
-            {"role": "user", "content": f"Room context:\n{context[-2000:]}\n\nQuestion: {question}"}])
+            {"role": "user", "content": f"Room context:\n{context[-2000:]}\n\nQuestion: {question}"}], account_id=CF_ACCOUNT)
         answer(room_id, out.strip())
     except Exception as e:
         answer(room_id, f"My reasoning backend errored ({e}). Try `reproduce` or paste a log.")

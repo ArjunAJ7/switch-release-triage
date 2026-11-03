@@ -10,14 +10,13 @@ import re
 import subprocess
 import urllib.request
 
-GH_MODEL = "openai/gpt-4o-mini"
+CF_MODEL = "@cf/meta/llama-3.1-8b-instruct"
 
 
 def llm(token, messages, max_tokens=512, account_id=None):
     req = urllib.request.Request(
-        "https://models.github.ai/inference/chat/completions",
-        data=json.dumps({"model": GH_MODEL, "messages": messages,
-                         "max_tokens": max_tokens}).encode(),
+        f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{CF_MODEL}",
+        data=json.dumps({"messages": messages, "max_tokens": max_tokens}).encode(),
         headers={"Authorization": f"Bearer {token}",
                  "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=60) as r:
