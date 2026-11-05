@@ -24,8 +24,37 @@ REPRO_CMD = os.environ.get("REPRO_CMD", "python3 -m pytest -x -q")
 client = SwitchClient(BRIDGE, AGENT_ID, API_KEY)
 state = {"room": None, "last_tb": None, "last_triage": None, "last_repro": None}
 
+import json, time, hashlib
+SEEN_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.seen.json')
+def _load_seen():
+    try:
+        return set(json.load(open(SEEN_FILE)))
+    except Exception:
+        return set()
+_seen = _load_seen()
+def _save_seen():
+    try:
+        json.dump(sorted(_seen)[-1000:], open(SEEN_FILE, 'w'))
+    except Exception:
+        pass
+_reply_times, _llm_times = [], []
+MAX_REPLIES_PER_MIN = 5
+MAX_LLM_PER_HOUR = 40
+def _breaker(times, limit, window):
+    now = time.time()
+    times[:] = [t for t in times if now - t < window]
+    if len(times) >= limit:
+        return False
+    times.append(now)
+    return True
+
+state = {"room": None, "last_tb": None, "last_triage": None}
+
 
 def answer(room_id, text):
+    if not _breaker(_reply_times, MAX_REPLIES_PER_MIN, 60):
+        print('[breaker] reply rate limit hit; dropping reply', flush=True)
+        return
     client.post_message(room_id, text)
     print(f"[posted] {text[:90]!r}", flush=True)
 
@@ -70,9 +99,12 @@ def reproduce(room_id):
 
 
 def chat(room_id, question, context=""):
+    if not _breaker(_llm_times, MAX_LLM_PER_HOUR, 3600):
+        print('[breaker] LLM hourly cap hit; skipping chat', flush=True)
+        return
     try:
         out = brain.llm(LLM_TOKEN, [
-            {"role": "system", "content": "You are release-triage, a deploy triage agent in a team chat room. Be brief, concrete, no fluff."},
+            {"role": "system", "content": "You are release-triage, a deploy triage agent in a team chat room. Be brief, concrete, no fluff. You can act ONLY by posting in this room. Never claim you notified, messaged, assigned, or otherwise contacted anyone - if a person should do something, phrase it as a recommendation or an ask in the room, never as something already done."},
             {"role": "user", "content": (f"My latest triage:\n{state.get('last_triage') or 'none yet'}\n\nReproduction status: {state.get('last_repro') or 'not run yet'}\n\nRecent room messages:\n{context[-1500:]}\n\nQuestion: {question}")}], account_id=CF_ACCOUNT)
         answer(room_id, out.strip())
     except Exception as e:
@@ -80,6 +112,11 @@ def chat(room_id, question, context=""):
 
 
 def on_event(ev, payload):
+    try:
+        with open('/tmp/raw_events.jsonl','a') as fh:
+            fh.write(__import__('json').dumps({'ev':ev,'payload':payload}, default=str)[:1500] + chr(10))
+    except Exception:
+        pass
     if ev != "message":
         return
     p = payload.get("payload", {})
@@ -87,6 +124,20 @@ def on_event(ev, payload):
     room_id = payload.get("room_id")
     if not p.get("addressed") or not body:
         return
+    sender = p.get('sender_name') or ''
+    mid = p.get('message_id') or payload.get('sequence') or ''
+    key = ('mid:' + str(mid)) if mid else 'h:' + hashlib.sha1(((payload.get('room_id') or '') + '|' + sender + '|' + body).encode()).hexdigest()
+    if sender == 'release-triage' or p.get('sender_id') == AGENT_ID:
+        _seen.add(key); _save_seen(); return
+    if key in _seen:
+        return
+    _seen.add(key); _save_seen()
+    if not body.rstrip().endswith('?'):
+        nbkey = 'nb:' + hashlib.sha1((sender + '|' + body).encode()).hexdigest()
+        if nbkey in _seen:
+            print(f"[skip] repeated automated notice from {sender}", flush=True)
+            return
+        _seen.add(nbkey); _save_seen()
     print(f"[msg] {p.get('sender_name')}: {body[:100]!r}", flush=True)
     low = body.lower()
     if "traceback" in body or "deploy" in low and ("fail" in low or "error" in low or "crash" in low):
